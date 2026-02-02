@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 
 const PORT = Number(process.env.PORT) || 3000;
-const HOST = Number(process.env.HOST) || "0.0.0.0";
+const HOST = process.env.HOST || "0.0.0.0";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
