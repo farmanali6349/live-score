@@ -21,8 +21,8 @@ matchRouter.get("/", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({
       success: false,
-      message: "Invalid Query",
-      details: parsed.error,
+      error: "Invalid Query",
+      details: parsed.error.issues,
     });
   }
   // Establishing The Limit
@@ -43,32 +43,25 @@ matchRouter.get("/", async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Error Getting List Of Matches",
-      details: error,
+      error: "Error Getting List Of Matches",
     });
   }
 });
 
 // 1. Creating New Match - POST (/)
 matchRouter.post("/", async (req, res) => {
-  console.log("Body received: ", req.body);
   // 1. Validating Payload
   const parsed = createMatchSchema.safeParse(req.body);
 
-  console.log("Parsed: ", parsed);
-
   if (!parsed.success) {
     return res.status(400).json({
+      success: false,
       error: "Invalid Payload",
-      details: parsed.error,
+      details: parsed.error.issues,
     });
   }
 
-  const {
-    data: { startTime, endTime, homeScore, awayScore },
-  } = parsed;
-
-  console.log({ startTime, endTime, homeScore, awayScore });
+  const { startTime, endTime, homeScore, awayScore } = parsed.data;
 
   // Creating Match
   try {
@@ -93,10 +86,9 @@ matchRouter.post("/", async (req, res) => {
     });
   } catch (error) {
     // Handling Error In Match Creation
-    console.log("Error occured", error);
     return res.status(500).json({
+      success: false,
       error: "Error in creating new match",
-      details: error,
     });
   }
 });
