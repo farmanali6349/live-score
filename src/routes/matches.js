@@ -6,7 +6,6 @@ import {
 import { db } from "../db/db.js";
 import { matches } from "../db/schema.js";
 import { getMatchStatus } from "../utils/utils.js";
-import { success } from "zod";
 import { desc } from "drizzle-orm";
 
 // Maximum Limit For Matches
@@ -78,6 +77,12 @@ matchRouter.post("/", async (req, res) => {
         updatedAt: new Date(),
       })
       .returning();
+
+    // Broadcasting The Match
+    const broadcastMatchCreated = res.app.locals.broadcastMatchCreated;
+    if (broadcastMatchCreated) {
+      broadcastMatchCreated(event);
+    }
 
     return res.status(201).json({
       success: true,
