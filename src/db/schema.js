@@ -29,11 +29,11 @@ export const matches = pgTable("matches", {
 });
 
 // Commentry Table
-export const commentry = pgTable("commentry", {
+export const commentary = pgTable("commentary", {
   id: serial("id").primaryKey(),
   matchId: integer("match_id")
     .notNull()
-    .references(() => matches.id),
+    .references(() => matches.id, { onDelete: "cascade" }),
   minute: integer("minute"),
   sequence: integer("sequence"),
   period: text("period"),
@@ -44,4 +44,5 @@ export const commentry = pgTable("commentry", {
   metadata: jsonb("metadata"),
   tags: text("tags").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
