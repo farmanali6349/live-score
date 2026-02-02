@@ -12,7 +12,7 @@ export const listMatchesQuerySchema = z.object({
 });
 
 export const matchIdParamSchema = z.object({
-  id: z.coerce.number().positive(),
+  id: z.coerce.number().int().positive(),
 });
 
 const isoDateString = z.string().refine((val) => !isNaN(Date.parse(val)), {
