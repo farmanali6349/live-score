@@ -33,10 +33,12 @@ export function attachWebsocketServer(server) {
     socket.on("error", console.error);
   });
 
-  // Setting Interval for Ping after every 3mins
+  // Setting Interval for Ping after every 30sec
   const pingInterval = setInterval(() => {
     wss.clients.forEach((ws) => {
-      if (ws.isAlive === false) return ws.terminate();
+      if (ws.isAlive === false) {
+        ws.terminate();
+      }
       ws.isAlive = false;
       ws.ping();
     });

@@ -80,7 +80,11 @@ matchRouter.post("/", async (req, res) => {
       .returning();
 
     // Emitting An App Event For Match Broadcasting
-    appEvents.emit("match_created", event);
+    try {
+      appEvents.emit("match_created", event);
+    } catch (emitError) {
+      console.error("match_created emit failed", emitError);
+    }
 
     return res.status(201).json({
       success: true,
