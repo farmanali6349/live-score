@@ -3,6 +3,8 @@ import express from "express";
 import { matchRouter } from "./routes/matches.js";
 import http from "http";
 import { attachWebsocketServer } from "./ws/server.js";
+import { appEvents } from "./events/events.js";
+
 const app = express();
 const server = http.createServer(app);
 
@@ -12,25 +14,26 @@ const HOST = process.env.HOST || "0.0.0.0";
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 1.0 REST API --> ROUTES
+// REST API --> ROUTES
 
-// 1.1 Get Route
+// Get Route
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-// 1.2 Match Routes
-app.use("/matches", matchRouter);
+// REAL-TIME --> WEBSOCKETS
 
-// 2.0 REAL-TIME --> WEBSOCKETS
-
-// 2.1 Attaching The Websocket Server
+// Attaching The Websocket Server
 const { broadcastMatchCreated } = attachWebsocketServer(server);
 
-// 2.3 To access the function anyWhere in the app
-app.locals.broadcastMatchCreated = broadcastMatchCreated;
+// Listening To App Events
+// New Match Created
+appEvents.on("match_created", broadcastMatchCreated);
 
-// 3.0 Server Listening
+// Match Routes
+app.use("/matches", matchRouter);
+
+// Server Listening
 server.listen(PORT, HOST, () => {
   const displayHost = HOST === "0.0.0.0" ? "localhost" : HOST;
   const urlHost = HOST.includes(":") ? `[${displayHost}]` : displayHost;
