@@ -1,4 +1,5 @@
 import { WebSocket, WebSocketServer } from "ws";
+import { webSocketArcjet } from "../arcjet.js";
 
 // Helper function to send JSON after checking if connection is open
 function sendJson(socket, payload) {
@@ -24,7 +25,27 @@ export function attachWebsocketServer(server) {
     maxPayload: 1024 * 1024,
   });
 
-  wss.on("connection", (socket, request) => {
+  wss.on("connection", async (socket, request) => {
+    // Web Socket Security Via Arcjet
+    if (webSocketArcjet) {
+      try {
+        const decision = await webSocketArcjet.protect(request);
+
+        if (decision.isDenied()) {
+          const code = decision.reason.isRateLimit() ? 1013 : 1008;
+          const reason = decision.reason.isRateLimit()
+            ? "Rate Limit Exceeded"
+            : "Access Denied";
+
+          socket.close(code, reason);
+          return;
+        }
+      } catch (error) {
+        console.log("Web Socket Connection Error", error);
+        socket.close(1011, "Server Security Error");
+        return;
+      }
+    }
     socket.isAlive = true;
     socket.on("pong", () => (socket.isAlive = true));
 
