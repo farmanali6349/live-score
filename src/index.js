@@ -4,6 +4,7 @@ import { matchRouter } from "./routes/matches.js";
 import http from "http";
 import { attachWebsocketServer } from "./ws/server.js";
 import { appEvents } from "./events/events.js";
+import { securityMiddleware } from "./arcjet.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -11,8 +12,14 @@ const server = http.createServer(app);
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 
+// Trusting Proxies
+app.set("trust proxy", true);
+
+// MIDDLEWARES
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Security
+app.use(securityMiddleware());
 
 // REST API --> ROUTES
 
