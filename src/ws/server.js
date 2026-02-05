@@ -20,13 +20,20 @@ function broadcast(wss, payload) {
 // A function to attach the websocket server
 export function attachWebsocketServer(server) {
   const wss = new WebSocketServer({
-    server,
+    noServer: true,
     path: "/ws",
     maxPayload: 1024 * 1024,
   });
 
   // Web Socket Security Via Arcjet
   server.on("upgrade", async (req, socket, head) => {
+    // Only handle upgrades for the /ws path
+    const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+    if (pathname !== "/ws") {
+      socket.destroy();
+      return;
+    }
+
     if (webSocketArcjet) {
       try {
         const decision = await webSocketArcjet.protect(req);
@@ -37,18 +44,24 @@ export function attachWebsocketServer(server) {
               "HTTP/1.1 429 Too Many Requests\r\nConnection: close\r\n\r\n",
             );
           } else {
-            socket.write("HTTP/1.1 403 Too Forbidden\r\n");
+            socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
           }
           socket.destroy();
           return;
         }
       } catch (error) {
         console.error("Upgrade Protection Error", error);
-        socket.write("HTTP/1.1 500 Internal Server Error\r\n");
+        socket.write(
+          "HTTP/1.1 500 Internal Server Error\r\nConnection: close\r\n\r\n",
+        );
         socket.destroy();
         return;
       }
     }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
   });
 
   wss.on("connection", async (socket, request) => {
@@ -83,7 +96,9 @@ export function attachWebsocketServer(server) {
     clearInterval(pingInterval);
 
     // Closing The Clients
-    wss.clients.forEach((ws) => ws.close(1001, "Server shutting down"));
+    wss.clients.forEach((ws) => {
+      ws.close(1001, "Server shutting down");
+    });
   });
 
   function broadcastMatchCreated(match) {
