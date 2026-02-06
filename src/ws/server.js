@@ -55,6 +55,7 @@ function handleMessage(socket, data) {
     message = JSON.parse(str);
   } catch (error) {
     sendJson(socket, { type: "error", message: "Invalid JSON" });
+    return;
   }
 
   const type = message?.type;
@@ -62,6 +63,7 @@ function handleMessage(socket, data) {
 
   if (!type || !matchId) {
     sendJson(socket, { type: "error", message: "Invalid JSON" });
+    return;
   }
 
   if (type === "subscribe" && Number.isInteger(matchId)) {
@@ -75,6 +77,7 @@ function handleMessage(socket, data) {
     unSubscribe(matchId, socket);
     socket.subscriptions.delete(matchId);
     sendJson(socket, { type: "unsubscribed", matchId });
+    return;
   }
 }
 // Broadcast To all active clients

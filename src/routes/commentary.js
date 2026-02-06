@@ -25,6 +25,14 @@ commentaryRouter.get("/", async (req, res) => {
 
   const parsedLimit = listCommentaryQueryShema.safeParse(req.query);
 
+  if (!parsedLimit.success) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid query params",
+      details: parsedLimit.error.issues,
+    });
+  }
+
   // Establishing The Limit
   const limit = Math.min(parsedLimit.data.limit ?? 50, MAX_LIMIT);
 
@@ -59,7 +67,7 @@ commentaryRouter.post("/", async (req, res) => {
     return res.status(400).json({
       success: false,
       message: "Invalid matchId",
-      details: parsed.error.issues,
+      details: idParsed.error.issues,
     });
   }
 
