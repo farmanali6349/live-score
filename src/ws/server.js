@@ -8,12 +8,94 @@ function sendJson(socket, payload) {
   socket.send(JSON.stringify(payload));
 }
 
-// Helper function to broadcast all active clients
-function broadcast(wss, payload) {
+const matchSubscribers = new Map();
+
+// Subscribe Function
+function subscribe(matchId, socket) {
+  if (!matchSubscribers.has(matchId)) {
+    matchSubscribers.set(matchId, new Set());
+  }
+
+  matchSubscribers.get(matchId).add(socket);
+}
+
+// Subscribe Function
+function unSubscribe(matchId, socket) {
+  const subscribers = matchSubscribers.get(matchId);
+
+  if (!subscribers) return;
+
+  subscribers.delete(socket);
+
+  if (subscribers.size === 0) {
+    matchSubscribers.delete(matchId);
+  }
+}
+
+// Cleanup Subscriptions
+function cleanupSubscriptions(socket) {
+  for (const matchId of socket.subscriptions) {
+    unSubscribe(matchId, socket);
+  }
+}
+
+function handleMessage(socket, data) {
+  let message;
+
+  try {
+    // Convert Buffer to string
+    let str = data.toString();
+
+    // Remove surrounding single quotes if present
+    if (str.startsWith("'") && str.endsWith("'")) {
+      str = str.slice(1, -1);
+    }
+
+    // Parse JSON
+    message = JSON.parse(str);
+  } catch (error) {
+    sendJson(socket, { type: "error", message: "Invalid JSON" });
+  }
+
+  const type = message?.type;
+  const matchId = message?.matchId;
+
+  if (!type || !matchId) {
+    sendJson(socket, { type: "error", message: "Invalid JSON" });
+  }
+
+  if (type === "subscribe" && Number.isInteger(matchId)) {
+    subscribe(matchId, socket);
+    socket.subscriptions.add(matchId);
+    sendJson(socket, { type: "subscribed", matchId });
+    return;
+  }
+
+  if (type === "unsubscribe" && Number.isInteger(matchId)) {
+    unSubscribe(matchId, socket);
+    socket.subscriptions.delete(matchId);
+    sendJson(socket, { type: "unsubscribed", matchId });
+  }
+}
+// Broadcast To all active clients
+function broadcastToAll(wss, payload) {
   for (const client of wss.clients) {
     if (client.readyState !== WebSocket.OPEN) continue;
 
     client.send(JSON.stringify(payload));
+  }
+}
+
+// Broadcast To Specific Match
+function broadcastToMatch(matchId, payload) {
+  const subscribers = matchSubscribers.get(matchId);
+
+  if (!subscribers || subscribers.size === 0) return;
+
+  for (const client of subscribers) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(payload));
+    }
   }
 }
 
@@ -65,13 +147,26 @@ export function attachWebsocketServer(server) {
 
   wss.on("connection", async (socket, request) => {
     socket.isAlive = true;
+
+    // Attching The Empty Subscription Set To The New Socket
+    socket.subscriptions = new Set();
+
+    // Handle The Subscribe & UnSubscribe
+    socket.on("message", (data) => {
+      handleMessage(socket, data.toString());
+    });
+
+    socket.on("close", () => {
+      cleanupSubscriptions(socket);
+    });
+
+    socket.on("error", () => {
+      socket.terminate();
+    });
+
     socket.on("pong", () => (socket.isAlive = true));
 
     sendJson(socket, { type: "welcome" });
-
-    socket.on("error", (err) => {
-      console.error("WebSocket error:", err.message);
-    });
   });
 
   // Setting Interval for Ping after every 30sec
@@ -101,8 +196,12 @@ export function attachWebsocketServer(server) {
   });
 
   function broadcastMatchCreated(match) {
-    broadcast(wss, { type: "match_created", data: match });
+    broadcastToAll(wss, { type: "match_created", data: match });
   }
 
-  return { broadcastMatchCreated };
+  function broadcastCommentaryCreated(commentary) {
+    broadcastToMatch(commentary.matchId, commentary);
+  }
+
+  return { broadcastMatchCreated, broadcastCommentaryCreated };
 }
