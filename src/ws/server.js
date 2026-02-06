@@ -203,7 +203,10 @@ export function attachWebsocketServer(server) {
   }
 
   function broadcastCommentaryCreated(commentary) {
-    broadcastToMatch(commentary.matchId, commentary);
+    broadcastToMatch(commentary.matchId, {
+      type: "commentary_created",
+      data: commentary,
+    });
   }
 
   return { broadcastMatchCreated, broadcastCommentaryCreated };
